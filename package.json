@@ -1,5 +1,8 @@
 {
   "name": "cloudformation-refactoring-helper",
+  "bin": {
+    "cloudformation-refactoring-helper": "bin/cloudformation-refactoring-helper"
+  },
   "scripts": {
     "build": "npx projen build",
     "bump": "npx projen bump",
@@ -39,6 +42,11 @@
     "ts-jest": "^29.1.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.3"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cloudformation": "^3.540.0",
+    "chalk": "4.1.2",
+    "yargs": "^17.7.2"
   },
   "main": "lib/index.js",
   "license": "Apache-2.0",

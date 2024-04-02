@@ -5,7 +5,7 @@ const project = new typescript.TypeScriptProject({
   projenrcTs: true,
   prettier: true,
   eslint: true,
-  deps: [],
+  deps: ["chalk@4.1.2", "yargs", "@aws-sdk/client-cloudformation"],
 
   // deps: [],                /* Runtime dependencies of this module. */
   // description: undefined,  /* The description is just a string that helps people understand the purpose of the package. */
