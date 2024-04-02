@@ -8,5 +8,5 @@ Generate JSON file for [CloudFormation Resource Import](https://docs.aws.amazon.
 ## Usage
 
 ```sh
-npx @konokenj/cloudformation-refactoring-helper --stack-name MyStack > MyStack.json
+npx cloudformation-refactoring-helper --stack-name MyStack > MyStack.json
 ```
