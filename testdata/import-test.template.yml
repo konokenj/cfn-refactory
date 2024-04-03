@@ -1,0 +1,9 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Resources:
+  Bucket1:
+    Type: AWS::S3::Bucket
+  Queue1:
+    Type: AWS::SQS::Queue
+Outputs:
+  Bucket1Name:
+    Value: !Ref Bucket1
