@@ -1,7 +1,7 @@
 {
-  "name": "cloudformation-refactoring-helper",
+  "name": "cfn-refactory",
   "bin": {
-    "cloudformation-refactoring-helper": "bin/cloudformation-refactoring-helper"
+    "cfn-refactory": "bin/cfn-refactory"
   },
   "scripts": {
     "build": "npx projen build",
