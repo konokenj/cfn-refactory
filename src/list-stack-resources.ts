@@ -1,3 +1,4 @@
+import { writeFileSync } from "fs";
 import {
   CloudFormationClient,
   DescribeStackResourcesCommand,
@@ -10,12 +11,16 @@ const cfnClient = new CloudFormationClient();
 const primaryIdentifiers = new Map<string, string>();
 const primaryIdentifierPrefix = "/properties/";
 const ignoredTypes = ["AWS::CDK::Metadata"];
-interface ResourceImportIdentifier {
+export interface ResourceImportIdentifier {
   ResourceType: string;
   LogicalResourceId: string;
   ResourceIdentifier: {
     [name: string]: string;
   };
+}
+export interface ListStackResourcesProps {
+  stackName: string;
+  out?: string;
 }
 
 async function getStackResources(
@@ -53,13 +58,15 @@ async function getPrimaryIdentifierName(resourceType: string): Promise<string> {
   return primaryIdentifierName;
 }
 
-export async function listStackResources(stackName: string): Promise<void> {
-  const resources = await getStackResources(stackName);
+export async function listStackResources(
+  props: ListStackResourcesProps,
+): Promise<ResourceImportIdentifier[]> {
+  const resourceImportIdentifiers: ResourceImportIdentifier[] = [];
+  const resources = await getStackResources(props.stackName);
   if (!resources) {
-    return;
+    return resourceImportIdentifiers;
   }
 
-  const resourceImportIdentifiers: ResourceImportIdentifier[] = [];
   for (const resource of resources) {
     if (
       !resource.ResourceType ||
@@ -83,5 +90,16 @@ export async function listStackResources(stackName: string): Promise<void> {
       },
     });
   }
-  console.log(JSON.stringify(resourceImportIdentifiers, null, 2));
+  return resourceImportIdentifiers;
+}
+
+export async function listStackResourcesCommand(
+  props: ListStackResourcesProps,
+): Promise<void> {
+  const resources = await listStackResources(props);
+  if (props.out) {
+    writeFileSync(props.out, JSON.stringify(resources, null, 2), "utf8");
+    return;
+  }
+  console.log(JSON.stringify(resources, null, 2));
 }
