@@ -1,0 +1,9 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Resources:
+  Bucket1:
+    Type: AWS::S3::Bucket
+  Queue1:
+    Type: AWS::SQS::Queue
+  Queue2:
+    Type: AWS::SQS::Queue
+    DeletionPolicy: Delete

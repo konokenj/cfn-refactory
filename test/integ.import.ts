@@ -6,17 +6,15 @@ import {
   CreateStackCommand,
   DeleteStackCommand,
   ExecuteChangeSetCommand,
-  //   DeleteStackCommand,
   UpdateStackCommand,
   waitUntilChangeSetCreateComplete,
   waitUntilStackCreateComplete,
   waitUntilStackDeleteComplete,
   waitUntilStackImportComplete,
-  //   waitUntilStackDeleteComplete,
   waitUntilStackUpdateComplete,
 } from "@aws-sdk/client-cloudformation";
-import { injectDeletionPolicyCommand } from "../src/inject-deletion-policy";
-import { listStackResourcesCommand } from "../src/list-stack-resources";
+import { generateImportJsonCommand } from "../src/generate-import-json";
+import { injectPolicyCommand } from "../src/inject-policy";
 
 jest.setTimeout(300000);
 const stackName = "CfnRefactory-Integ-Import";
@@ -75,22 +73,23 @@ beforeAll(async () => {
       TemplateBody: templateBody,
     }),
   );
+
   await waitUntilStackCreateComplete(
     { client: cfnClient, maxWaitTime: 300 },
     { StackName: stackName },
   );
 });
 
-describe("should be able to generate migrate.json", () => {
+describe("should be able to generate import.json", () => {
   let migrateJsonBody: any;
   beforeAll(async () => {
-    console.log("Executing listStackResources");
-    await listStackResourcesCommand({
+    console.log("Executing GenerateImportJson");
+    await generateImportJsonCommand({
       stackName,
-      out: `${templateDir}/${stackName}.resources.json`,
+      out: `${templateDir}/${stackName}.import.json`,
     });
     migrateJsonBody = JSON.parse(
-      readFileSync(`${templateDir}/${stackName}.resources.json`).toString(),
+      readFileSync(`${templateDir}/${stackName}.import.json`).toString(),
     );
   });
 
@@ -102,8 +101,8 @@ describe("should be able to generate migrate.json", () => {
 describe("should be able to inject DeletionPolicy", () => {
   let templateJsonBody: any;
   beforeAll(async () => {
-    await injectDeletionPolicyCommand({
-      policy: "RetainExceptOnCreate",
+    await injectPolicyCommand({
+      deletionPolicy: "RetainExceptOnCreate",
       templatePath: `${templateDir}/${stackName}.template.json`,
       out: `${templateDir}/${stackName}.injected.json`,
     });
@@ -159,7 +158,7 @@ describe("should be able to import", () => {
     );
 
     migrateJsonBody = JSON.parse(
-      readFileSync(`${templateDir}/${stackName}.resources.json`).toString(),
+      readFileSync(`${templateDir}/${stackName}.import.json`).toString(),
     );
     let filtered: any[] = [];
     for (const resource of migrateJsonBody) {

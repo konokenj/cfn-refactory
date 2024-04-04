@@ -50,4 +50,5 @@ junit.xml
 /dist/
 !/.eslintrc.json
 /test/temp
+/testdata/*.json
 !/.projenrc.ts

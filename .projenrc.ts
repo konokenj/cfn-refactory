@@ -10,7 +10,9 @@ const project = new typescript.TypeScriptProject({
   npmProvenance: false, // https://github.com/projen/projen/issues/3479
 });
 project.addScripts({
+  app: "npx ts-node --prefer-ts-exts src/index.ts ",
   integ: "npx projen test --testMatch '**/test/integ.*'",
 });
 project.addGitIgnore("/test/temp");
+project.addGitIgnore("/testdata/*.json");
 project.synth();

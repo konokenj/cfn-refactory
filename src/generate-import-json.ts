@@ -18,7 +18,7 @@ export interface ResourceImportIdentifier {
     [name: string]: string;
   };
 }
-export interface ListStackResourcesProps {
+export interface GenerateImportJsonProps {
   stackName: string;
   out?: string;
 }
@@ -58,8 +58,8 @@ async function getPrimaryIdentifierName(resourceType: string): Promise<string> {
   return primaryIdentifierName;
 }
 
-export async function listStackResources(
-  props: ListStackResourcesProps,
+export async function generateImportJson(
+  props: GenerateImportJsonProps,
 ): Promise<ResourceImportIdentifier[]> {
   const resourceImportIdentifiers: ResourceImportIdentifier[] = [];
   const resources = await getStackResources(props.stackName);
@@ -93,10 +93,10 @@ export async function listStackResources(
   return resourceImportIdentifiers;
 }
 
-export async function listStackResourcesCommand(
-  props: ListStackResourcesProps,
+export async function generateImportJsonCommand(
+  props: GenerateImportJsonProps,
 ): Promise<void> {
-  const resources = await listStackResources(props);
+  const resources = await generateImportJson(props);
   if (props.out) {
     writeFileSync(props.out, JSON.stringify(resources, null, 2), "utf8");
     return;

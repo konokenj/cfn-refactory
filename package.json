@@ -22,6 +22,7 @@
     "upgrade": "npx projen upgrade",
     "watch": "npx projen watch",
     "projen": "npx projen",
+    "app": "npx ts-node --prefer-ts-exts src/index.ts ",
     "integ": "npx projen test --testMatch '**/test/integ.*'"
   },
   "devDependencies": {

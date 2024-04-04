@@ -1,7 +1,7 @@
 import chalk from "chalk";
 import yargs from "yargs/yargs";
-import { injectDeletionPolicyCommand } from "./inject-deletion-policy";
-import { listStackResourcesCommand } from "./list-stack-resources";
+import { generateImportJsonCommand } from "./generate-import-json";
+import { injectPolicyCommand, DeletionPolicy } from "./inject-policy";
 
 if (!process.stdout.isTTY) {
   // Disable chalk color highlighting
@@ -12,37 +12,41 @@ async function exec(args: string[]) {
   return yargs(args)
     .option("verbose", { type: "boolean" })
     .command(
-      "list-stack-resources <stack>",
-      "List stack resources with primary identifier to use in resource import",
+      "generate-import-json <stack>",
+      "Generate a list of stack resources with primary identifier to use in resource import",
       function builder(yarg) {
         return yarg
           .positional("stack", { type: "string", demandOption: true })
           .option("out", { alias: "o", type: "string" });
       },
       async function handler(argv) {
-        await listStackResourcesCommand({
+        await generateImportJsonCommand({
           stackName: argv.stack,
           out: argv.out,
         });
       },
     )
     .command(
-      "inject-deletion-policy <template>",
+      "inject-policy <template>",
       "Inject DeletionPolicy into all resources in the template. Template must be a JSON file.",
       function builder(yarg) {
         return yarg
           .positional("template", { type: "string", demandOption: true })
-          .option("policy", {
+          .option("deletion-policy", {
             type: "string",
-            choices: ["Retain", "RetainExceptOnCreate", "Delete"],
-            default: "RetainExceptOnCreate",
+            choices: [
+              DeletionPolicy.Retain,
+              DeletionPolicy.RetainExceptOnCreate,
+              DeletionPolicy.Delete,
+            ],
+            default: DeletionPolicy.RetainExceptOnCreate,
           })
           .option("out", { alias: "o", type: "string" });
       },
       async function handler(argv) {
-        await injectDeletionPolicyCommand({
+        await injectPolicyCommand({
           templatePath: argv.template,
-          policy: argv.policy,
+          deletionPolicy: argv.deletionPolicy,
           out: argv.out,
         });
       },
