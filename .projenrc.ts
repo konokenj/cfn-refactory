@@ -8,6 +8,9 @@ const project = new typescript.TypeScriptProject({
   deps: ["chalk@4.1.2", "yargs", "@aws-sdk/client-cloudformation"],
   releaseToNpm: true,
   npmProvenance: false, // https://github.com/projen/projen/issues/3479
+  npmIgnoreOptions: {
+    ignorePatterns: ["*.log", "/testdata/"],
+  },
 });
 project.addScripts({
   app: "npx ts-node --prefer-ts-exts src/index.ts ",
