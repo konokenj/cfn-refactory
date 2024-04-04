@@ -21,16 +21,16 @@ npx cfn-refactory generate-import-json MyStack --out MyStack.import.json
 
 CloudFormation Resource Importの前提条件として必要な `DeletionPolicy` をすべてのリソースに埋め込みます。
 
+```sh
+npx cfn-refactory inject-policy MyStack.json --out MyStack.retain.json
+```
+
 > [!TIP]
 > 対象のテンプレートはJSON形式である必要があります。YAMLからJSONへの変換には [aws-cloudformation/rain](https://github.com/aws-cloudformation/rain) が利用可能です。
 >
 > ```sh
 > rain fmt --json MyStack.yaml > MyStack.json
 > ```
-
-```sh
-npx cfn-refactory inject-policy MyStack.json --out MyStack.retain.json
-```
 
 ## リファクタリングのシナリオ
 
@@ -60,9 +60,9 @@ npx cfn-refactory inject-policy MyStack.json --out MyStack.retain.json
    - `rain deploy Stack1.after.yml Stack1`
 1. インポート用のJSONから、移動させ**ない**リソースを削除する
    - 手動操作
-   - サンプルテンプレート: [Stack2.yml](./testdata/Stack2.yml)
 1. Stack2のテンプレート(YAML)を作成して、変更セットを作成→実行する
    - 下記コマンドを参照
+   - サンプルテンプレート: [Stack2.yml](./testdata/Stack2.yml)
 1. Stack2のドリフト検出を実行する
 
 ```sh
@@ -77,7 +77,7 @@ aws cloudformation execute-change-set \
     --change-set-name ImportChangeSet
 ```
 
-> [!TIPS]
+> [!TIP]
 > 変更セットの `ChangeSetType: "IMPORT"` を使用してリソースインポートを行う場合、インポート以外のリソース操作は同時に行えません。
 >
 > - 既存のスタックにインポートする場合、インポートするリソース以外に変更が発生しないことを確認してください。

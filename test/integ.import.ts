@@ -1,5 +1,5 @@
 import { execSync } from "child_process";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, rmSync } from "fs";
 import {
   CloudFormationClient,
   CreateChangeSetCommand,
@@ -17,97 +17,76 @@ import { generateImportJsonCommand } from "../src/generate-import-json";
 import { injectPolicyCommand } from "../src/inject-policy";
 
 jest.setTimeout(300000);
-const stackName = "CfnRefactory-Integ-Import";
-const templateDir = "test/temp";
-const templateBody = `
-AWSTemplateFormatVersion: "2010-09-09"
-Resources:
-  Bucket1:
-    Type: AWS::S3::Bucket
-  Queue1:
-    Type: AWS::SQS::Queue
-  Queue2:
-    Type: AWS::SQS::Queue
-    DeletionPolicy: Delete
-`;
-const templateBodyToBeforeImport = `
-AWSTemplateFormatVersion: "2010-09-09"
-Resources:
-  Queue2:
-    Type: AWS::SQS::Queue
-    DeletionPolicy: Delete
-`;
-const templateBodyToDelete = `
-AWSTemplateFormatVersion: "2010-09-09"
-Resources:
-  Bucket1:
-    Type: AWS::S3::Bucket
-    DeletionPolicy: Delete
-  Queue1:
-    Type: AWS::SQS::Queue
-    DeletionPolicy: Delete
-  Queue2:
-    Type: AWS::SQS::Queue
-    DeletionPolicy: Delete
-`;
+const stackName1 = "CfnRefactory-Integ-Import1";
+const stackName2 = "CfnRefactory-Integ-Import2";
+const tempDir = "test/temp";
+const testdataDir = "testdata";
 const cfnClient = new CloudFormationClient();
 
 beforeAll(async () => {
-  console.log(`Saving templates to ${templateDir}`);
-  if (existsSync(templateDir)) {
-    rmSync(templateDir, { recursive: true });
+  console.log(`Saving templates to ${tempDir}`);
+  if (existsSync(tempDir)) {
+    rmSync(tempDir, { recursive: true });
   }
-  mkdirSync(templateDir, { recursive: true });
-  writeFileSync(`${templateDir}/${stackName}.template.yml`, templateBody);
+  mkdirSync(tempDir, { recursive: true });
 
-  console.log(`Converting templates to JSON with rain`);
-  const stdout = execSync(
-    `rain fmt --json ${templateDir}/${stackName}.template.yml > ${templateDir}/${stackName}.template.json`,
-  );
-  console.log(stdout.toString());
-
-  console.log("Creating CloudFormation Stack");
+  // 1. (準備) Stack1のテンプレート(YAML)を作成してデプロイする
+  console.log("1. (準備) Stack1のテンプレート(YAML)を作成してデプロイする");
   await cfnClient.send(
     new CreateStackCommand({
-      StackName: stackName,
-      TemplateBody: templateBody,
+      StackName: stackName1,
+      TemplateBody: readFileSync(`${testdataDir}/Stack1.before.yml`).toString(),
     }),
   );
 
   await waitUntilStackCreateComplete(
     { client: cfnClient, maxWaitTime: 300 },
-    { StackName: stackName },
+    { StackName: stackName1 },
   );
 });
 
 describe("should be able to generate import.json", () => {
-  let migrateJsonBody: any;
+  let importJsonBody: any;
   beforeAll(async () => {
-    console.log("Executing GenerateImportJson");
+    // 2. Stack1のすべてのスタックリソースを含む、インポート用のJSONを生成する
+    console.log(
+      "2. Stack1のすべてのスタックリソースを含む、インポート用のJSONを生成する",
+    );
     await generateImportJsonCommand({
-      stackName,
-      out: `${templateDir}/${stackName}.import.json`,
+      stackName: stackName1,
+      out: `${tempDir}/Stack1.import.json`,
     });
-    migrateJsonBody = JSON.parse(
-      readFileSync(`${templateDir}/${stackName}.import.json`).toString(),
+    importJsonBody = JSON.parse(
+      readFileSync(`${tempDir}/Stack1.import.json`).toString(),
     );
   });
 
   it("should has 3 resources", () => {
-    expect(migrateJsonBody).toHaveLength(3);
+    expect(importJsonBody).toHaveLength(3);
   });
 });
 
 describe("should be able to inject DeletionPolicy", () => {
   let templateJsonBody: any;
   beforeAll(async () => {
+    // 3. Stack1のテンプレート(YAML)をJSONに変換する
+    console.log(`3. Stack1のテンプレート(YAML)をJSONに変換する`);
+    const stdout = execSync(
+      `rain fmt --json ${testdataDir}/Stack1.before.yml > ${tempDir}/Stack1.before.json`,
+    );
+    console.log(stdout.toString());
+
+    // 4. Stack1のテンプレート(JSON)に含まれるすべてのリソースに `DeletionPolicy` を設定する
+    console.log(
+      "4. Stack1のテンプレート(JSON)に含まれるすべてのリソースに `DeletionPolicy` を設定する",
+    );
     await injectPolicyCommand({
       deletionPolicy: "RetainExceptOnCreate",
-      templatePath: `${templateDir}/${stackName}.template.json`,
-      out: `${templateDir}/${stackName}.injected.json`,
+      templatePath: `${tempDir}/Stack1.before.json`,
+      out: `${tempDir}/Stack1.retain.json`,
     });
     templateJsonBody = JSON.parse(
-      readFileSync(`${templateDir}/${stackName}.injected.json`).toString(),
+      readFileSync(`${tempDir}/Stack1.retain.json`).toString(),
     );
   });
 
@@ -126,84 +105,101 @@ describe("should be able to inject DeletionPolicy", () => {
   });
 
   it("should be deployed successfully", async () => {
-    console.log("Updating CloudFormation Stack to set DeletionPolicy");
+    // 5. Stack1をテンプレート(JSON)で更新して、`DeletionPolicy` を反映する
+    console.log(
+      "5. Stack1をテンプレート(JSON)で更新して、`DeletionPolicy` を反映する",
+    );
     await cfnClient.send(
       new UpdateStackCommand({
-        StackName: stackName,
+        StackName: stackName1,
         TemplateBody: JSON.stringify(templateJsonBody),
       }),
     );
     const result = await waitUntilStackUpdateComplete(
       { client: cfnClient, maxWaitTime: 300 },
-      { StackName: stackName },
+      { StackName: stackName1 },
     );
     expect(result.state).toBe("SUCCESS");
-    return;
   });
 });
 
 describe("should be able to import", () => {
-  let migrateJsonBody: any;
+  let importJsonBody: any;
   beforeAll(async () => {
-    console.log("Updating CloudFormation Stack to remove resources");
+    // 7. Stack1をテンプレート(JSON)で更新して、移動させるリソースを削除する (`DELETE_SKIP`)
+    console.log(
+      "7. Stack1をテンプレート(JSON)で更新して、移動させるリソースを削除する (`DELETE_SKIP`)",
+    );
     await cfnClient.send(
       new UpdateStackCommand({
-        StackName: stackName,
-        TemplateBody: templateBodyToBeforeImport,
+        StackName: stackName1,
+        TemplateBody: readFileSync(
+          `${testdataDir}/Stack1.after.yml`, // 6
+        ).toString(),
       }),
     );
     await waitUntilStackUpdateComplete(
       { client: cfnClient, maxWaitTime: 300 },
-      { StackName: stackName },
+      { StackName: stackName1 },
     );
 
-    migrateJsonBody = JSON.parse(
-      readFileSync(`${templateDir}/${stackName}.import.json`).toString(),
+    // 8. インポート用のJSONから、移動させないリソースを削除する
+    console.log("8. インポート用のJSONから、移動させないリソースを削除する");
+    importJsonBody = JSON.parse(
+      readFileSync(`${tempDir}/Stack1.import.json`).toString(),
     );
     let filtered: any[] = [];
-    for (const resource of migrateJsonBody) {
+    for (const resource of importJsonBody) {
       if (resource.LogicalResourceId != "Queue2") {
         filtered.push(resource);
       }
     }
-    migrateJsonBody = filtered;
+    importJsonBody = filtered;
   });
 
+  // 9. Stack2のテンプレート(YAML)を作成して、変更セットを作成→実行する
   it("should be able to import resources", async () => {
-    console.log("Importing CloudFormation Stack");
+    console.log(
+      "9. Stack2のテンプレート(YAML)を作成して、変更セットを作成→実行する",
+    );
     await cfnClient.send(
       new CreateChangeSetCommand({
-        StackName: stackName,
+        StackName: stackName2,
         ChangeSetName: "import",
         ChangeSetType: "IMPORT",
-        ResourcesToImport: migrateJsonBody,
-        TemplateBody: templateBodyToDelete,
+        ResourcesToImport: importJsonBody,
+        TemplateBody: readFileSync(`${testdataDir}/Stack2.yml`).toString(),
       }),
     );
     await waitUntilChangeSetCreateComplete(
       { client: cfnClient, maxWaitTime: 300 },
-      { StackName: stackName, ChangeSetName: "import" },
+      { StackName: stackName2, ChangeSetName: "import" },
     );
 
     await cfnClient.send(
       new ExecuteChangeSetCommand({
-        StackName: stackName,
+        StackName: stackName2,
         ChangeSetName: "import",
       }),
     );
     const result = await waitUntilStackImportComplete(
       { client: cfnClient, maxWaitTime: 300 },
-      { StackName: stackName },
+      { StackName: stackName2 },
     );
     expect(result.state).toBe("SUCCESS");
   });
 });
 
 afterAll(async () => {
-  console.log("Deleting CloudFormation Stack");
-  await cfnClient.send(new DeleteStackCommand({ StackName: stackName }));
+  console.log("(後処理) Stackを削除する");
+  await cfnClient.send(new DeleteStackCommand({ StackName: stackName1 }));
   await waitUntilStackDeleteComplete(
     { client: cfnClient, maxWaitTime: 300 },
-    { StackName: stackName },
+    { StackName: stackName1 },
+  );
+  await cfnClient.send(new DeleteStackCommand({ StackName: stackName2 }));
+  await waitUntilStackDeleteComplete(
+    { client: cfnClient, maxWaitTime: 300 },
+    { StackName: stackName2 },
   );
 });
