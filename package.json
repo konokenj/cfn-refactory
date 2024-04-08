@@ -39,14 +39,14 @@
     "jest": "^29.7.0",
     "jest-junit": "^15",
     "prettier": "^3.2.5",
-    "projen": "^0.80.15",
+    "projen": "^0.80.19",
     "standard-version": "^9",
     "ts-jest": "^29.1.2",
     "ts-node": "^10.9.2",
-    "typescript": "^5.4.3"
+    "typescript": "^5.4.4"
   },
   "dependencies": {
-    "@aws-sdk/client-cloudformation": "^3.540.0",
+    "@aws-sdk/client-cloudformation": "^3.549.0",
     "chalk": "4.1.2",
     "yargs": "^17.7.2"
   },
